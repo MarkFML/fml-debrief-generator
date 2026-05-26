@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Debrief Form Generator</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #111; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: #e0e0e0; min-height: 100vh; padding: 40px 20px; }
+  .wrap { max-width: 600px; margin: 0 auto; }
+
+  .logo { font-size: 13px; font-weight: 500; color: #555; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 32px; }
+  h1 { font-size: 26px; font-weight: 600; color: #f0f0f0; margin-bottom: 6px; }
+  .subtitle { font-size: 14px; color: #666; margin-bottom: 36px; }
+
+  .card { background: #1c1c1c; border: 1px solid #2a2a2a; border-radius: 12px; padding: 24px; margin-bottom: 16px; }
+  .card-title { font-size: 11px; font-weight: 600; color: #555; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 16px; }
+
+  label { font-size: 13px; color: #aaa; display: block; margin-bottom: 6px; }
+  input[type="text"], input[type="url"] {
+    width: 100%; background: #141414; border: 1px solid #2e2e2e; border-radius: 8px;
+    padding: 10px 14px; font-size: 14px; color: #e0e0e0; outline: none;
+    transition: border-color 0.15s;
+  }
+  input[type="text"]:focus, input[type="url"]:focus { border-color: #6259d4; }
+  .field { margin-bottom: 18px; }
+  .field:last-child { margin-bottom: 0; }
+  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .hint { font-size: 11px; color: #444; margin-top: 5px; line-height: 1.5; }
+
+  /* Image upload */
+  .image-drop {
+    border: 1px dashed #2e2e2e; border-radius: 8px; padding: 24px;
+    text-align: center; cursor: pointer; transition: border-color 0.15s, background 0.15s;
+    background: #141414;
+  }
+  .image-drop:hover { border-color: #6259d4; background: #18172a; }
+  .image-drop.dragover { border-color: #6259d4; background: #18172a; }
+  .image-drop input { display: none; }
+  .image-drop-icon { font-size: 28px; color: #333; margin-bottom: 8px; }
+  .image-drop p { font-size: 13px; color: #555; }
+  .image-drop span { font-size: 12px; color: #444; }
+
+  .image-previews { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-top: 12px; }
+  .image-thumb { position: relative; aspect-ratio: 1; border-radius: 6px; overflow: hidden; background: #1a1a1a; border: 1px solid #2a2a2a; }
+  .image-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .image-thumb .remove { position: absolute; top: 4px; right: 4px; width: 18px; height: 18px; border-radius: 50%; background: rgba(0,0,0,0.7); color: #fff; border: none; cursor: pointer; font-size: 11px; display: flex; align-items: center; justify-content: center; line-height: 1; }
+  .image-thumb .order-badge { position: absolute; bottom: 4px; left: 4px; background: rgba(0,0,0,0.6); color: #aaa; font-size: 10px; padding: 2px 5px; border-radius: 3px; }
+
+  .img-count { font-size: 12px; color: #444; margin-top: 8px; }
+
+  /* Script URL */
+  .script-url-row { display: flex; gap: 8px; align-items: flex-start; }
+  .script-url-row input { flex: 1; }
+  .help-btn { background: #1e1e1e; border: 1px solid #2e2e2e; color: #777; border-radius: 8px; padding: 10px 14px; font-size: 12px; cursor: pointer; white-space: nowrap; flex-shrink: 0; }
+  .help-btn:hover { border-color: #555; color: #aaa; }
+
+  /* Instructions panel */
+  .instructions { display: none; background: #141414; border: 1px solid #2a2a2a; border-radius: 8px; padding: 18px; margin-top: 12px; }
+  .instructions.open { display: block; }
+  .instructions h3 { font-size: 13px; font-weight: 600; color: #ddd; margin-bottom: 12px; }
+  .step { display: flex; gap: 10px; margin-bottom: 10px; font-size: 12px; color: #888; line-height: 1.6; }
+  .step-num { width: 18px; height: 18px; border-radius: 50%; background: #2a2840; color: #9490e8; font-size: 10px; font-weight: 600; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+  .step code { background: #1e1e1e; border: 1px solid #2e2e2e; padding: 1px 5px; border-radius: 3px; font-size: 11px; color: #9490e8; font-family: monospace; }
+  .step a { color: #9490e8; text-decoration: none; }
+  .step a:hover { text-decoration: underline; }
+  .copy-script-btn { width: 100%; margin-top: 10px; background: #2a2840; border: 1px solid #3d3870; color: #9490e8; border-radius: 6px; padding: 8px; font-size: 12px; cursor: pointer; }
+  .copy-script-btn:hover { background: #322f52; }
+
+  /* Generate button */
+  .generate-btn {
+    width: 100%; padding: 14px; background: #6259d4; border: none; border-radius: 10px;
+    color: #fff; font-size: 15px; font-weight: 600; cursor: pointer;
+    transition: background 0.15s, transform 0.1s; margin-top: 8px;
+  }
+  .generate-btn:hover { background: #7068e0; }
+  .generate-btn:active { transform: scale(0.99); }
+  .generate-btn:disabled { background: #2a2a2a; color: #555; cursor: not-allowed; }
+
+  .error { font-size: 12px; color: #e05c5c; margin-top: 8px; display: none; }
+  .error.show { display: block; }
+
+  /* Success state */
+  .success-card { display: none; background: #0e1f18; border: 1px solid #1a3d2a; border-radius: 12px; padding: 24px; margin-top: 16px; text-align: center; }
+  .success-card.show { display: block; }
+  .success-icon { font-size: 32px; margin-bottom: 12px; color: #4caf8a; }
+  .success-card h2 { font-size: 18px; font-weight: 600; color: #f0f0f0; margin-bottom: 6px; }
+  .success-card p { font-size: 13px; color: #777; margin-bottom: 20px; }
+  .download-btn { display: inline-block; background: #4caf8a; color: #fff; border: none; border-radius: 8px; padding: 12px 28px; font-size: 14px; font-weight: 600; cursor: pointer; text-decoration: none; }
+  .download-btn:hover { background: #5bbf96; }
+  .another-btn { display: block; margin-top: 12px; font-size: 12px; color: #555; cursor: pointer; background: none; border: none; text-decoration: underline; }
+  .another-btn:hover { color: #888; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="logo">Studio debrief</div>
+  <h1>Form generator</h1>
+  <p class="subtitle">Fill in the project details below to generate a shareable debrief form.</p>
+
+  <div class="card">
+    <div class="card-title">Project details</div>
+    <div class="field-row">
+      <div class="field">
+        <label>Project code</label>
+        <input type="text" id="proj-code" placeholder="e.g. 0234" />
+      </div>
+      <div class="field">
+        <label>Project name</label>
+        <input type="text" id="proj-name" placeholder="e.g. Zaratan_Oxen" />
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Background imagery <span style="color:#444; font-weight:400; text-transform:none; letter-spacing:0;">— 1–5 images, shown as rotating backdrop</span></div>
+    <div class="image-drop" id="drop-zone">
+      <input type="file" id="image-input" accept="image/*" multiple />
+      <div class="image-drop-icon">↑</div>
+      <p>Drop images here or click to browse</p>
+      <span>JPG, PNG, WebP — max 5 images</span>
+    </div>
+    <div class="image-previews" id="image-previews"></div>
+    <div class="img-count" id="img-count"></div>
+  </div>
+
+  <div class="card" style="border-color:#1a3d2a;">
+    <div class="card-title" style="color:#4caf8a;">Responses destination</div>
+    <div style="display:flex; align-items:center; gap:10px;">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#4caf8a" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+      <span style="font-size:13px; color:#aaa;">Connected to your shared Google Sheet — all responses route there automatically, one tab per project code.</span>
+    </div>
+  </div>
+
+  <div id="error-msg" class="error">Please fill in all fields and add at least one image.</div>
+  <button class="generate-btn" onclick="generate()">Generate form →</button>
+
+  <div class="success-card" id="success-card">
+    <div class="success-icon">✓</div>
+    <h2 id="success-title">Form ready</h2>
+    <p id="success-desc">Share the HTML file with your team and collaborators.</p>
+    <a id="download-link" class="download-btn">Download form</a>
+    <button class="another-btn" onclick="resetForm()">Generate another</button>
+  </div>
+</div>
+
+<script>
+const images = [];
+
+const dropZone = document.getElementById('drop-zone');
+const imageInput = document.getElementById('image-input');
+const previews = document.getElementById('image-previews');
+const imgCount = document.getElementById('img-count');
+
+dropZone.addEventListener('click', () => imageInput.click());
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('dragover'); handleFiles(e.dataTransfer.files); });
+imageInput.addEventListener('change', e => handleFiles(e.target.files));
+
+function handleFiles(files) {
+  const remaining = 5 - images.length;
+  const toAdd = Array.from(files).slice(0, remaining);
+  toAdd.forEach(file => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      images.push({ name: file.name, data: e.target.result });
+      renderPreviews();
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function renderPreviews() {
+  previews.innerHTML = '';
+  images.forEach((img, i) => {
+    const thumb = document.createElement('div');
+    thumb.className = 'image-thumb';
+    thumb.innerHTML = `<img src="${img.data}" /><button class="remove" onclick="removeImage(${i})">×</button><div class="order-badge">${i + 1}</div>`;
+    previews.appendChild(thumb);
+  });
+  imgCount.textContent = images.length > 0 ? `${images.length} of 5 images added` : '';
+}
+
+function removeImage(i) {
+  images.splice(i, 1);
+  renderPreviews();
+}
+
+const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxzISKifUQTPqFWaAKUyxAUvRYL-JCj45mN6A2L2i50BJeUTHWvA5wsmRMuI7d9GtgL/exec';
+
+function toggleInstructions() {}
+
+function generate() {
+  const code = document.getElementById('proj-code').value.trim();
+  const name = document.getElementById('proj-name').value.trim();
+  const err = document.getElementById('error-msg');
+
+  if (!code || !name || images.length === 0) {
+    err.classList.add('show');
+    return;
+  }
+  err.classList.remove('show');
+
+  const html = buildForm(code, name, SCRIPT_URL, images);
+  const blob = new Blob([html], { type: 'text/html' });
+  const url = URL.createObjectURL(blob);
+  const filename = `debrief-${code.toLowerCase().replace(/[^a-z0-9]/g, '-')}.html`;
+
+  const link = document.getElementById('download-link');
+  link.href = url;
+  link.download = filename;
+
+  document.getElementById('success-title').textContent = `${code} — ${name}`;
+  document.getElementById('success-desc').textContent = `Form generated. Share ${filename} with your collaborators.`;
+  document.getElementById('success-card').classList.add('show');
+  document.querySelector('.generate-btn').disabled = true;
+}
+
+function resetForm() {
+  document.getElementById('proj-code').value = '';
+  document.getElementById('proj-name').value = '';
+  images.length = 0;
+  renderPreviews();
+  document.getElementById('success-card').classList.remove('show');
+  document.querySelector('.generate-btn').disabled = false;
+}
+
+function buildForm(code, name, scriptUrl, imgs) {
+  const bgImages = imgs.map(i => `'${i.data}'`).join(', ');
+  const bgCount = imgs.length;
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Project debrief — ${code}</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    color: #e8e8e8;
+    min-height: 100vh;
+    background: #111;
+  }
+
+  .bg {
+    position: fixed; inset: 0; z-index: 0;
+    background-size: cover; background-position: center;
+    transition: opacity 1.2s ease;
+  }
+  .bg::after {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(to bottom, rgba(0,0,0,0.72) 0%, rgba(0,0,0,0.55) 40%, rgba(0,0,0,0.82) 100%);
+  }
+
+  .page { position: relative; z-index: 1; padding: 40px 20px 60px; }
+
+  .project-badge {
+    max-width: 680px; margin: 0 auto 28px;
+    display: flex; flex-direction: column; gap: 4px;
+  }
+  .project-code { font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.4); letter-spacing: 0.1em; text-transform: uppercase; }
+  .project-name { font-size: 28px; font-weight: 700; color: #fff; line-height: 1.2; }
+
+  .form-wrap { max-width: 680px; margin: 0 auto; }
+
+  .form-header {
+    background: rgba(28,28,28,0.92); backdrop-filter: blur(12px);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px; padding: 24px 24px 20px; margin-bottom: 12px;
+    border-top: 5px solid #6259d4;
+  }
+  .form-header h1 { font-size: 20px; font-weight: 600; color: #f0f0f0; margin-bottom: 8px; }
+  .form-header h1 span { font-size: 15px; font-weight: 400; color: #777; }
+  .form-header p { font-size: 14px; color: #999; line-height: 1.6; margin-bottom: 14px; }
+  .anon-badge { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; color: #9490e8; background: rgba(42,40,64,0.8); border: 1px solid #3d3870; padding: 5px 12px; border-radius: 20px; }
+
+  .section-card {
+    background: rgba(28,28,28,0.92); backdrop-filter: blur(12px);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px; padding: 20px 24px 24px; margin-bottom: 12px;
+  }
+  .section-title { font-size: 16px; font-weight: 600; color: #f0f0f0; display: flex; align-items: center; gap: 10px; margin-bottom: 18px; }
+  .section-num { width: 24px; height: 24px; border-radius: 50%; background: rgba(42,40,64,0.9); color: #9490e8; font-size: 12px; font-weight: 600; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .routing-tag { font-size: 12px; color: #4caf8a; background: rgba(26,46,37,0.9); border: 1px solid #2a4a37; padding: 3px 10px; border-radius: 20px; font-weight: 500; }
+
+  .q { margin-top: 20px; }
+  .q-label { font-size: 14px; font-weight: 600; color: #e8e8e8; display: block; margin-bottom: 8px; line-height: 1.4; }
+  .q-sub { font-size: 12px; color: #666; display: block; margin-top: -4px; margin-bottom: 10px; }
+
+  .radio-group, .check-group { display: flex; flex-direction: column; gap: 6px; }
+  .radio-item, .check-item { display: flex; align-items: center; gap: 10px; font-size: 14px; color: #bbb; cursor: pointer; }
+  .radio-item input[type="radio"], .check-item input[type="checkbox"] { width: 15px; height: 15px; accent-color: #6259d4; cursor: pointer; flex-shrink: 0; }
+
+  .scale-wrap { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .scale-lbl { font-size: 12px; color: #666; }
+  .scale-btns { display: flex; gap: 5px; }
+  .scale-btn {
+    width: 36px; height: 36px; border-radius: 8px; border: 1px solid #2e2e2e;
+    background: #1a1a1a; color: #888; font-size: 13px; cursor: pointer;
+    transition: background 0.1s, color 0.1s, border-color 0.1s;
+  }
+  .scale-btn:hover { border-color: #6259d4; color: #9490e8; }
+  .scale-btn.selected { background: #2a2840; color: #9490e8; border-color: #6259d4; }
+
+  textarea, input[type="text"].text-input {
+    width: 100%; background: rgba(20,20,20,0.8); border: 1px solid #2e2e2e;
+    border-radius: 8px; padding: 10px 14px; font-size: 13px; color: #e0e0e0;
+    font-family: inherit; outline: none; transition: border-color 0.15s; resize: vertical;
+  }
+  textarea:focus, input[type="text"].text-input:focus { border-color: #6259d4; }
+  textarea { min-height: 72px; }
+
+  .q-qualitative { margin-top: 20px; padding-top: 18px; border-top: 1px solid rgba(255,255,255,0.06); }
+  .q-qualitative .q-label { font-weight: 500; color: #888; font-size: 13px; }
+
+  .tool-group { margin-bottom: 14px; }
+  .tool-group:last-of-type { margin-bottom: 0; }
+  .tool-group-header { font-size: 10px; font-weight: 600; color: #555; text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 8px; padding-bottom: 5px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+  .tool-col2 { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 16px; }
+  .check-item.muted { color: #555; }
+
+  .other-specify { margin-top: 14px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.05); }
+  .other-specify .q-sub { margin-bottom: 6px; }
+
+  .submit-btn {
+    width: 100%; padding: 16px; background: #6259d4; border: none; border-radius: 10px;
+    color: #fff; font-size: 15px; font-weight: 600; cursor: pointer;
+    transition: background 0.15s; margin-top: 8px;
+  }
+  .submit-btn:hover { background: #7068e0; }
+  .submit-btn:disabled { background: #2a2a2a; color: #555; cursor: not-allowed; }
+
+  .form-footer { text-align: center; font-size: 12px; color: #444; padding: 14px 0 0; }
+
+  .submitted-msg { display: none; background: rgba(14,31,24,0.95); border: 1px solid #1a3d2a; border-radius: 12px; padding: 40px 24px; text-align: center; }
+  .submitted-msg.show { display: block; }
+  .submitted-msg h2 { font-size: 20px; font-weight: 600; color: #f0f0f0; margin-bottom: 8px; }
+  .submitted-msg p { font-size: 14px; color: #666; }
+</style>
+</head>
+<body>
+
+<div class="bg" id="bg"></div>
+
+<div class="page">
+  <div class="project-badge">
+    <span class="project-code">${code}</span>
+    <span class="project-name">${name}</span>
+  </div>
+
+  <div class="form-wrap" id="form-wrap">
+
+    <div class="form-header">
+      <h1>Project debrief <span>— end-of-project survey</span></h1>
+      <p>Thank you for collaborating with us. This anonymous survey helps us improve our process, communication, and delivery across all future projects. It takes about 5 minutes.</p>
+      <div class="anon-badge">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        100% anonymous — no identifying data collected
+      </div>
+    </div>
+
+    <form id="debrief-form">
+
+    <!-- Section 1 -->
+    <div class="section-card">
+      <div class="section-title"><span class="section-num">1</span> Context <span class="routing-tag">Routing only</span></div>
+      <div class="q">
+        <span class="q-label">What was your role on this project?</span>
+        <div class="radio-group">
+          <label class="radio-item"><input type="radio" name="role" value="Agency partner" /> Agency partner</label>
+          <label class="radio-item"><input type="radio" name="role" value="Internal team member" /> Internal team member</label>
+          <label class="radio-item"><input type="radio" name="role" value="Freelancer" /> Freelancer</label>
+        </div>
+      </div>
+      <div class="q">
+        <span class="q-label">Which phase(s) did you work on?</span>
+        <div class="check-group">
+          <label class="check-item"><input type="checkbox" name="phases" value="Pre-production" /> Pre-production (concept, storyboard, scripting)</label>
+          <label class="check-item"><input type="checkbox" name="phases" value="Production" /> Production (animation, rigging, compositing)</label>
+          <label class="check-item"><input type="checkbox" name="phases" value="Post-production" /> Post-production (edit, sound, grading)</label>
+          <label class="check-item"><input type="checkbox" name="phases" value="Delivery" /> Delivery &amp; client management</label>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 2 -->
+    <div class="section-card">
+      <div class="section-title"><span class="section-num">2</span> Brief &amp; scope</div>
+      <div class="q">
+        <span class="q-label">How clear was the brief at the start of the project?</span>
+        <div class="scale-wrap">
+          <span class="scale-lbl">Very unclear</span>
+          <div class="scale-btns" data-name="brief_clarity">
+            <button type="button" class="scale-btn" data-val="1">1</button>
+            <button type="button" class="scale-btn" data-val="2">2</button>
+            <button type="button" class="scale-btn" data-val="3">3</button>
+            <button type="button" class="scale-btn" data-val="4">4</button>
+            <button type="button" class="scale-btn" data-val="5">5</button>
+          </div>
+          <span class="scale-lbl">Very clear</span>
+        </div>
+      </div>
+      <div class="q">
+        <span class="q-label">Did the scope change significantly during the project?</span>
+        <div class="radio-group">
+          <label class="radio-item"><input type="radio" name="scope_change" value="No — stayed on scope" /> No — stayed on scope</label>
+          <label class="radio-item"><input type="radio" name="scope_change" value="Minor changes, well managed" /> Minor changes, well managed</label>
+          <label class="radio-item"><input type="radio" name="scope_change" value="Significant changes, partially managed" /> Significant changes, partially managed</label>
+          <label class="radio-item"><input type="radio" name="scope_change" value="Significant changes, poorly managed" /> Significant changes, poorly managed</label>
+        </div>
+      </div>
+      <div class="q">
+        <span class="q-label">If scope changed, what was the main cause?</span>
+        <span class="q-sub">Optional — skip if N/A</span>
+        <div class="check-group">
+          <label class="check-item"><input type="checkbox" name="scope_cause" value="Client feedback" /> Client feedback</label>
+          <label class="check-item"><input type="checkbox" name="scope_cause" value="Creative evolution" /> Creative evolution</label>
+          <label class="check-item"><input type="checkbox" name="scope_cause" value="Resource constraints" /> Resource constraints</label>
+          <label class="check-item"><input type="checkbox" name="scope_cause" value="Timeline pressure" /> Timeline pressure</label>
+          <label class="check-item"><input type="checkbox" name="scope_cause" value="Other" /> Other</label>
+        </div>
+      </div>
+      <div class="q-qualitative">
+        <span class="q-label">Any additional context on the brief or how scope was managed? <span style="font-weight:400;color:#555;">Optional</span></span>
+        <textarea name="brief_context" placeholder="e.g. What made the brief unclear, how scope changes played out, what could have been locked down earlier…"></textarea>
+      </div>
+    </div>
+
+    <!-- Section 3 -->
+    <div class="section-card">
+      <div class="section-title"><span class="section-num">3</span> Communication &amp; collaboration</div>
+      <div class="q">
+        <span class="q-label">How would you rate communication throughout the project?</span>
+        <div class="scale-wrap">
+          <span class="scale-lbl">Poor</span>
+          <div class="scale-btns" data-name="comms_rating">
+            <button type="button" class="scale-btn" data-val="1">1</button>
+            <button type="button" class="scale-btn" data-val="2">2</button>
+            <button type="button" class="scale-btn" data-val="3">3</button>
+            <button type="button" class="scale-btn" data-val="4">4</button>
+            <button type="button" class="scale-btn" data-val="5">5</button>
+          </div>
+          <span class="scale-lbl">Excellent</span>
+        </div>
+      </div>
+      <div class="q">
+        <span class="q-label">Which communication areas need improvement?</span>
+        <div class="check-group">
+          <label class="check-item"><input type="checkbox" name="comms_areas" value="Briefing &amp; kickoff" /> Briefing &amp; kickoff</label>
+          <label class="check-item"><input type="checkbox" name="comms_areas" value="Feedback rounds &amp; approvals" /> Feedback rounds &amp; approvals</label>
+          <label class="check-item"><input type="checkbox" name="comms_areas" value="Status updates &amp; milestones" /> Status updates &amp; milestones</label>
+          <label class="check-item"><input type="checkbox" name="comms_areas" value="Deadline management" /> Deadline management</label>
+          <label class="check-item"><input type="checkbox" name="comms_areas" value="Tool / platform used" /> Tool / platform used</label>
+          <label class="check-item"><input type="checkbox" name="comms_areas" value="None — all good" /> None — all good</label>
+        </div>
+      </div>
+      <div class="q-qualitative">
+        <span class="q-label">Tell us more about your rating or the areas you flagged. <span style="font-weight:400;color:#555;">Optional</span></span>
+        <textarea name="comms_context" placeholder="e.g. Why you gave that score, what specifically broke down, what good communication looked like at its best…"></textarea>
+      </div>
+    </div>
+
+    <!-- Section 4 -->
+    <div class="section-card">
+      <div class="section-title"><span class="section-num">4</span> Timelines &amp; delivery</div>
+      <div class="q">
+        <span class="q-label">Was the project delivered on time?</span>
+        <div class="radio-group">
+          <label class="radio-item"><input type="radio" name="on_time" value="Yes, on schedule" /> Yes, on schedule</label>
+          <label class="radio-item"><input type="radio" name="on_time" value="Slightly delayed (under 1 week)" /> Slightly delayed (under 1 week)</label>
+          <label class="radio-item"><input type="radio" name="on_time" value="Significantly delayed (1+ weeks)" /> Significantly delayed (1+ weeks)</label>
+        </div>
+      </div>
+      <div class="q">
+        <span class="q-label">If delayed, what was the primary reason?</span>
+        <span class="q-sub">Optional</span>
+        <div class="radio-group">
+          <label class="radio-item"><input type="radio" name="delay_reason" value="Slow client approvals" /> Slow client approvals</label>
+          <label class="radio-item"><input type="radio" name="delay_reason" value="Scope changes" /> Scope changes</label>
+          <label class="radio-item"><input type="radio" name="delay_reason" value="Internal resource issues" /> Internal resource issues</label>
+          <label class="radio-item"><input type="radio" name="delay_reason" value="Technical issues" /> Technical issues</label>
+          <label class="radio-item"><input type="radio" name="delay_reason" value="Other" /> Other</label>
+        </div>
+      </div>
+      <div class="q-qualitative">
+        <span class="q-label">Any further context on timelines or how delivery was handled? <span style="font-weight:400;color:#555;">Optional</span></span>
+        <textarea name="timeline_context" placeholder="e.g. Where time was lost, whether the original deadline was realistic, what would have kept us on track…"></textarea>
+      </div>
+    </div>
+
+    <!-- Section 5 -->
+    <div class="section-card">
+      <div class="section-title"><span class="section-num">5</span> Creative output &amp; quality</div>
+      <div class="q">
+        <span class="q-label">How satisfied were you with the final creative output?</span>
+        <div class="scale-wrap">
+          <span class="scale-lbl">Not satisfied</span>
+          <div class="scale-btns" data-name="creative_satisfaction">
+            <button type="button" class="scale-btn" data-val="1">1</button>
+            <button type="button" class="scale-btn" data-val="2">2</button>
+            <button type="button" class="scale-btn" data-val="3">3</button>
+            <button type="button" class="scale-btn" data-val="4">4</button>
+            <button type="button" class="scale-btn" data-val="5">5</button>
+          </div>
+          <span class="scale-lbl">Very satisfied</span>
+        </div>
+      </div>
+      <div class="q">
+        <span class="q-label">What aspect of the creative work worked best?</span>
+        <textarea name="creative_best" placeholder="Open answer…"></textarea>
+      </div>
+      <div class="q">
+        <span class="q-label">What could have been done better creatively?</span>
+        <textarea name="creative_improve" placeholder="Open answer…"></textarea>
+      </div>
+    </div>
+
+    <!-- Section 6 -->
+    <div class="section-card">
+      <div class="section-title"><span class="section-num">6</span> Tools &amp; workflow</div>
+      <div class="q">
+        <span class="q-label">Which tools / platforms were used on this project?</span>
+        <span class="q-sub">Select all that apply</span>
+
+        <div class="tool-group">
+          <div class="tool-group-header">Software &amp; tools</div>
+          <div class="tool-col2">
+            <label class="check-item"><input type="checkbox" name="tools" value="Maya" /> Maya</label>
+            <label class="check-item"><input type="checkbox" name="tools" value="Blender" /> Blender</label>
+            <label class="check-item"><input type="checkbox" name="tools" value="Adobe Suite" /> Adobe Suite</label>
+            <label class="check-item"><input type="checkbox" name="tools" value="Nuke" /> Nuke</label>
+            <label class="check-item"><input type="checkbox" name="tools" value="ZBrush / Substance" /> ZBrush / Substance</label>
+            <label class="check-item"><input type="checkbox" name="tools" value="Unreal Engine" /> Unreal Engine</label>
+            <label class="check-item"><input type="checkbox" name="tools" value="Toon Boom / TVPaint" /> Toon Boom / TVPaint</label>
+            <label class="check-item"><input type="checkbox" name="tools" value="Cinema 4D" /> Cinema 4D</label>
+            <label class="check-item"><input type="checkbox" name="tools" value="Houdini" /> Houdini</label>
+            <label class="check-item"><input type="checkbox" name="tools" value="Unity" /> Unity</label>
+            <label class="check-item muted"><input type="checkbox" name="tools" value="Other software" /> Other</label>
+          </div>
+        </div>
+
+        <div class="tool-group">
+          <div class="tool-group-header">AI tools</div>
+          <div class="tool-col2">
+            <label class="check-item"><input type="checkbox" name="tools" value="Midjourney" /> Midjourney</label>
+            <label class="check-item"><input type="checkbox" name="tools" value="Freepik / Magnific" /> Freepik / Magnific</label>
+            <label class="check-item"><input type="checkbox" name="tools" value="Higgsfield" /> Higgsfield</label>
+            <label class="check-item"><input type="checkbox" name="tools" value="Seedance" /> Seedance</label>
+            <label class="check-item"><input type="checkbox" name="tools" value="Runway" /> Runway</label>
+            <label class="check-item muted"><input type="checkbox" name="tools" value="Other AI" /> Other</label>
+          </div>
+        </div>
+
+        <div class="tool-group">
+          <div class="tool-group-header">Project management, review &amp; delivery</div>
+          <div class="tool-col2">
+            <label class="check-item"><input type="checkbox" name="tools" value="ftrack" /> ftrack</label>
+            <label class="check-item"><input type="checkbox" name="tools" value="Google Suite" /> Google Suite</label>
+            <label class="check-item"><input type="checkbox" name="tools" value="Frame.io" /> Frame.io</label>
+            <label class="check-item"><input type="checkbox" name="tools" value="Notion / Asana / Monday" /> Notion / Asana / Monday</label>
+            <label class="check-item"><input type="checkbox" name="tools" value="Vimeo Review" /> Vimeo Review</label>
+            <label class="check-item muted"><input type="checkbox" name="tools" value="Other PM" /> Other</label>
+          </div>
+        </div>
+
+        <div class="tool-group">
+          <div class="tool-group-header">Comms &amp; infrastructure</div>
+          <div class="tool-col2">
+            <label class="check-item"><input type="checkbox" name="tools" value="Discord" /> Discord</label>
+            <label class="check-item"><input type="checkbox" name="tools" value="LucidLink" /> LucidLink</label>
+            <label class="check-item"><input type="checkbox" name="tools" value="Parsec" /> Parsec</label>
+            <label class="check-item"><input type="checkbox" name="tools" value="AWS" /> AWS</label>
+            <label class="check-item"><input type="checkbox" name="tools" value="Slack / Teams" /> Slack / Teams</label>
+            <label class="check-item muted"><input type="checkbox" name="tools" value="Other comms" /> Other</label>
+          </div>
+        </div>
+
+        <div class="other-specify">
+          <span class="q-sub">If other, please specify</span>
+          <input type="text" class="text-input" name="tools_other" placeholder="e.g. DaVinci Resolve, MotionBuilder, Stable Diffusion…" />
+        </div>
+      </div>
+
+      <div class="q">
+        <span class="q-label">Did the tooling cause any friction?</span>
+        <div class="radio-group">
+          <label class="radio-item"><input type="radio" name="tool_friction" value="No friction" /> No friction</label>
+          <label class="radio-item"><input type="radio" name="tool_friction" value="Minor friction" /> Minor friction</label>
+          <label class="radio-item"><input type="radio" name="tool_friction" value="Significant friction" /> Significant friction</label>
+        </div>
+      </div>
+      <div class="q-qualitative">
+        <span class="q-label">What friction did you encounter, or what worked particularly well? <span style="font-weight:400;color:#555;">Optional</span></span>
+        <textarea name="tool_context" placeholder="e.g. Specific tools that slowed things down, platforms that could be replaced, anything that made collaboration smoother…"></textarea>
+      </div>
+    </div>
+
+    <!-- Section 7 -->
+    <div class="section-card">
+      <div class="section-title"><span class="section-num">7</span> Overall &amp; recommendations</div>
+      <div class="q">
+        <span class="q-label">Overall, how would you rate this project experience?</span>
+        <div class="scale-wrap">
+          <span class="scale-lbl">Very poor</span>
+          <div class="scale-btns" data-name="overall_rating">
+            <button type="button" class="scale-btn" data-val="1">1</button>
+            <button type="button" class="scale-btn" data-val="2">2</button>
+            <button type="button" class="scale-btn" data-val="3">3</button>
+            <button type="button" class="scale-btn" data-val="4">4</button>
+            <button type="button" class="scale-btn" data-val="5">5</button>
+          </div>
+          <span class="scale-lbl">Excellent</span>
+        </div>
+      </div>
+      <div class="q">
+        <span class="q-label">What's the #1 thing we should change for the next project?</span>
+        <textarea name="top_change" placeholder="Open answer…"></textarea>
+      </div>
+      <div class="q">
+        <span class="q-label">Anything else you'd like to share?</span>
+        <textarea name="anything_else" placeholder="Open answer…"></textarea>
+      </div>
+    </div>
+
+    <button type="button" class="submit-btn" id="submit-btn" onclick="submitForm()">Submit debrief</button>
+    <div class="form-footer">Anonymous · No account required · ~5 min</div>
+
+    </form>
+
+    <div class="submitted-msg" id="submitted-msg">
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#4caf8a" stroke-width="2" style="margin-bottom:14px"><polyline points="20 6 9 17 4 12"/></svg>
+      <h2>Thanks for your feedback</h2>
+      <p>Your response has been recorded anonymously. It helps us improve on every project.</p>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const SCRIPT_URL = '${scriptUrl}';
+const PROJECT_CODE = '${code}';
+const PROJECT_NAME = '${name}';
+const bgImages = [${bgImages}];
+let currentBg = 0;
+
+const bg = document.getElementById('bg');
+bg.style.backgroundImage = 'url(' + bgImages[0] + ')';
+
+if (bgImages.length > 1) {
+  setInterval(() => {
+    currentBg = (currentBg + 1) % bgImages.length;
+    bg.style.opacity = '0';
+    setTimeout(() => {
+      bg.style.backgroundImage = 'url(' + bgImages[currentBg] + ')';
+      bg.style.opacity = '1';
+    }, 600);
+  }, 5000);
+}
+
+const scaleValues = {};
+document.querySelectorAll('.scale-btns').forEach(group => {
+  const name = group.dataset.name;
+  scaleValues[name] = null;
+  group.querySelectorAll('.scale-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      group.querySelectorAll('.scale-btn').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      scaleValues[name] = btn.dataset.val;
+    });
+  });
+});
+
+function getChecked(name) {
+  return Array.from(document.querySelectorAll('input[name="' + name + '"]:checked')).map(i => i.value).join(', ');
+}
+function getRadio(name) {
+  const el = document.querySelector('input[name="' + name + '"]:checked');
+  return el ? el.value : '';
+}
+function getVal(name) {
+  const el = document.querySelector('[name="' + name + '"]');
+  return el ? el.value.trim() : '';
+}
+
+async function submitForm() {
+  const btn = document.getElementById('submit-btn');
+  btn.disabled = true;
+  btn.textContent = 'Submitting…';
+
+  const payload = {
+    project_code: PROJECT_CODE,
+    project_name: PROJECT_NAME,
+    timestamp: new Date().toISOString(),
+    role: getRadio('role'),
+    phases: getChecked('phases'),
+    brief_clarity: scaleValues['brief_clarity'] || '',
+    scope_change: getRadio('scope_change'),
+    scope_cause: getChecked('scope_cause'),
+    brief_context: getVal('brief_context'),
+    comms_rating: scaleValues['comms_rating'] || '',
+    comms_areas: getChecked('comms_areas'),
+    comms_context: getVal('comms_context'),
+    on_time: getRadio('on_time'),
+    delay_reason: getRadio('delay_reason'),
+    timeline_context: getVal('timeline_context'),
+    creative_satisfaction: scaleValues['creative_satisfaction'] || '',
+    creative_best: getVal('creative_best'),
+    creative_improve: getVal('creative_improve'),
+    tools: getChecked('tools'),
+    tools_other: getVal('tools_other'),
+    tool_friction: getRadio('tool_friction'),
+    tool_context: getVal('tool_context'),
+    overall_rating: scaleValues['overall_rating'] || '',
+    top_change: getVal('top_change'),
+    anything_else: getVal('anything_else')
+  };
+
+  try {
+    await fetch(SCRIPT_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+  } catch(e) {}
+
+  document.getElementById('debrief-form').style.display = 'none';
+  document.getElementById('submitted-msg').classList.add('show');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+<\/script>
+</body>
+</html>`;
+}
+</script>
+</body>
+</html>
