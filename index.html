@@ -137,9 +137,13 @@
 
   <div class="success-card" id="success-card">
     <div class="success-icon">✓</div>
-    <h2 id="success-title">Form ready</h2>
-    <p id="success-desc">Share the HTML file with your team and collaborators.</p>
-    <a id="download-link" class="download-btn">Download form</a>
+    <h2 id="success-title">Form published</h2>
+    <p id="success-desc">Your form is live. Copy the link below to share with collaborators.</p>
+    <div id="live-url-row" style="display:none; gap:8px; margin-bottom:12px;">
+      <input id="live-url" type="text" readonly style="flex:1; background:#141414; border:1px solid #2e2e2e; border-radius:8px; padding:10px 12px; font-size:12px; color:#aaa; font-family:monospace; outline:none;" />
+      <button id="copy-btn" style="background:#6259d4; border:none; border-radius:8px; color:#fff; padding:10px 16px; font-size:13px; font-weight:600; cursor:pointer; white-space:nowrap;">Copy link</button>
+    </div>
+    <p style="font-size:11px; color:#444;">Takes ~60 seconds to go live on GitHub Pages after first publish.</p>
     <button class="another-btn" onclick="resetForm()">Generate another</button>
   </div>
 </div>
@@ -188,10 +192,13 @@ function removeImage(i) {
 }
 
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxzISKifUQTPqFWaAKUyxAUvRYL-JCj45mN6A2L2i50BJeUTHWvA5wsmRMuI7d9GtgL/exec';
+const GH_TOKEN = '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';
+const GH_REPO = 'MarkFML/fml-debrief-generator';
+const GH_BRANCH = 'main';
 
 function toggleInstructions() {}
 
-function generate() {
+async function generate() {
   const code = document.getElementById('proj-code').value.trim();
   const name = document.getElementById('proj-name').value.trim();
   const err = document.getElementById('error-msg');
@@ -202,19 +209,62 @@ function generate() {
   }
   err.classList.remove('show');
 
+  const btn = document.querySelector('.generate-btn');
+  btn.disabled = true;
+  btn.textContent = 'Publishing…';
+
   const html = buildForm(code, name, SCRIPT_URL, images);
-  const blob = new Blob([html], { type: 'text/html' });
-  const url = URL.createObjectURL(blob);
-  const filename = `debrief-${code.toLowerCase().replace(/[^a-z0-9]/g, '-')}.html`;
+  const filename = `forms/${code}_${name}.html`;
+  const encoded = btoa(unescape(encodeURIComponent(html)));
 
-  const link = document.getElementById('download-link');
-  link.href = url;
-  link.download = filename;
+  // Check if file already exists (need SHA to update)
+  let sha = null;
+  try {
+    const check = await fetch(`https://api.github.com/repos/${GH_REPO}/contents/${filename}`, {
+      headers: { 'Authorization': `token ${GH_TOKEN}`, 'Accept': 'application/vnd.github.v3+json' }
+    });
+    if (check.ok) {
+      const existing = await check.json();
+      sha = existing.sha;
+    }
+  } catch(e) {}
 
-  document.getElementById('success-title').textContent = `${code} — ${name}`;
-  document.getElementById('success-desc').textContent = `Form generated. Share ${filename} with your collaborators.`;
-  document.getElementById('success-card').classList.add('show');
-  document.querySelector('.generate-btn').disabled = true;
+  const body = {
+    message: `Add debrief form: ${code}_${name}`,
+    content: encoded,
+    branch: GH_BRANCH
+  };
+  if (sha) body.sha = sha;
+
+  const res = await fetch(`https://api.github.com/repos/${GH_REPO}/contents/${filename}`, {
+    method: 'PUT',
+    headers: {
+      'Authorization': `token ${GH_TOKEN}`,
+      'Accept': 'application/vnd.github.v3+json',
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(body)
+  });
+
+  if (res.ok) {
+    const liveUrl = `https://markfml.github.io/fml-debrief-generator/forms/${code}_${name}.html`;
+    document.getElementById('success-title').textContent = `${code}_${name}`;
+    document.getElementById('success-desc').textContent = 'Your form is live. Copy the link below to share with collaborators.';
+    document.getElementById('live-url').value = liveUrl;
+    document.getElementById('live-url-row').style.display = 'flex';
+    document.getElementById('copy-btn').onclick = () => {
+      navigator.clipboard.writeText(liveUrl);
+      document.getElementById('copy-btn').textContent = 'Copied!';
+      setTimeout(() => document.getElementById('copy-btn').textContent = 'Copy link', 2000);
+    };
+    document.getElementById('success-card').classList.add('show');
+  } else {
+    const errData = await res.json();
+    err.textContent = `GitHub error: ${errData.message}`;
+    err.classList.add('show');
+    btn.disabled = false;
+    btn.textContent = 'Generate form →';
+  }
 }
 
 function resetForm() {
@@ -223,7 +273,9 @@ function resetForm() {
   images.length = 0;
   renderPreviews();
   document.getElementById('success-card').classList.remove('show');
+  document.getElementById('live-url-row').style.display = 'none';
   document.querySelector('.generate-btn').disabled = false;
+  document.querySelector('.generate-btn').textContent = 'Generate form →';
 }
 
 function buildForm(code, name, scriptUrl, imgs) {
